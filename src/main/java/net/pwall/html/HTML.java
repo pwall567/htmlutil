@@ -275,6 +275,12 @@ public class HTML {
         // any others?
     }
 
+    public static final Strings.SpaceTest spaceTest = new Strings.SpaceTest() {
+        @Override public boolean isSpace(int ch) {
+            return isWhiteSpace(ch);
+        }
+    };
+
     public static final CharMapper charMapper = new CharMapper() {
         @Override
         public String map(int codePoint) {
@@ -467,6 +473,10 @@ public class HTML {
             if (!isWhiteSpace(s.charAt(i)))
                 return false;
         return true;
+    }
+
+    public static String trim(String s) {
+        return Strings.trim(s, spaceTest);
     }
 
     /**
