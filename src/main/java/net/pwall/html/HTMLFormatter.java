@@ -443,14 +443,16 @@ public class HTMLFormatter extends DefaultHandler2 implements AutoCloseable {
                 }
             }
             else {
-                if (!data.isEmpty() && HTML.isAllWhiteSpace(data))
-                    output.append(' ');
-                else {
-                    if (HTML.isWhiteSpace(data.charAt(0)))
+                if (!data.isEmpty()) {
+                    if (HTML.isAllWhiteSpace(data))
                         output.append(' ');
-                    output.append(HTML.escape(HTML.trim(data)));
-                    if (HTML.isWhiteSpace(data.charAt(data.length() - 1)))
-                        output.append(' ');
+                    else {
+                        if (HTML.isWhiteSpace(data.charAt(0)))
+                            output.append(' ');
+                        output.append(HTML.escape(HTML.trim(data)));
+                        if (HTML.isWhiteSpace(data.charAt(data.length() - 1)))
+                            output.append(' ');
+                    }
                 }
             }
         }
