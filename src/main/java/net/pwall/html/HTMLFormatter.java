@@ -484,6 +484,28 @@ public class HTMLFormatter extends DefaultHandler2 implements AutoCloseable {
         characters(ch, start, length);
     }
 
+    @Override
+    public void comment(char ch[], int start, int length) throws SAXException {
+        // TODO check this
+        for (int i = start, n = start + length - 1; i < n; i++)
+            if (ch[i] == '-' && ch[i + 1] == '-')
+                throw new SAXException("Illegal data in comment");
+        try {
+            write(checkData());
+            if (whitespace == Whitespace.INDENT)
+                writeSpaces(elements.size() * getIndent());
+            write("<!--");
+            StringBuilder sb = new StringBuilder(length);
+            sb.append(ch, start, length);
+            write("-->");
+            if (whitespace == Whitespace.INDENT)
+                write(eol);
+        }
+        catch (IOException e) {
+            throw new SAXException("Error in HTMLFormatter", e);
+        }
+    }
+
     private String checkData() throws SAXException {
         StringBuilder output = new StringBuilder();
         String data = this.data.toString();
