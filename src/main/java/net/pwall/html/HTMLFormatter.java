@@ -106,6 +106,9 @@ public class HTMLFormatter extends DefaultHandler2 implements AutoCloseable {
     private Locator locator;
     private boolean documentStarted;
     private boolean documentEnded;
+    private boolean dtdStarted;
+    private boolean dtdInternalSubset;
+    private boolean dtdEnded;
 
     /**
      * Construct a {@code HTMLFormatter} using the given {@link OutputStream}, with the given
@@ -128,7 +131,9 @@ public class HTMLFormatter extends DefaultHandler2 implements AutoCloseable {
         locator = null;
         documentStarted = false;
         documentEnded = false;
-        // TBC
+        dtdStarted = false;
+        dtdInternalSubset = false;
+        dtdEnded = false;
     }
 
     /**
@@ -159,10 +164,77 @@ public class HTMLFormatter extends DefaultHandler2 implements AutoCloseable {
     }
 
     /**
+     * Receive notification of the beginning of the DTD.
+     *
+     * @param   name        the document element name
+     * @param   publicId    the public id
+     * @param   systemId    the system id
+     * @throws  SAXException    on any errors
+     * @see     org.xml.sax.ext.LexicalHandler#startDTD(String, String, String)
+     */
+    @Override
+    public void startDTD(String name, String publicId, String systemId) throws SAXException {
+        if (!documentStarted)
+            throw new SAXException("Document not started");
+        if (dtdStarted || dtdEnded)
+            throw new SAXException("Misplaced DTD");
+        dtdStarted = true;
+        String data = checkData();
+        if (!HTML.isAllWhiteSpace(data))
+            throw new SAXException("Misplaced data before DOCTYPE");
+        try {
+            if (whitespace == Whitespace.ALL)
+                write(data);
+            write("<!DOCTYPE ");
+            write(name);
+            if (!isEmpty(publicId)) {
+                write(" PUBLIC \"");
+                write(publicId);
+                write("\" \"");
+                write(systemId);
+                write('"');
+            }
+            else if (!isEmpty(systemId)) {
+                write(" SYSTEM \"");
+                write(systemId);
+                write('"');
+            }
+        }
+        catch (IOException ioe) {
+            throw new SAXException("Error in HTMLFormatter", ioe);
+        }
+    }
+
+    /**
+     * Receive notification of the end of the DTD.
+     *
+     * @throws  SAXException    on any errors
+     * @see     org.xml.sax.ext.LexicalHandler#endDTD()
+     */
+    @Override
+    public void endDTD() throws SAXException {
+        if (!documentStarted)
+            throw new SAXException("Document not started");
+        if (!dtdStarted || dtdEnded)
+            throw new SAXException("Misplaced End DTD");
+        dtdEnded = true;
+        try {
+            if (dtdInternalSubset)
+                write(']');
+            write('>');
+            if (whitespace == Whitespace.INDENT)
+                write(eol);
+        }
+        catch (IOException ioe) {
+            throw new SAXException("Error in HTMLFormatter", ioe);
+        }
+    }
+
+    /**
      * Receive notification of the beginning of the document.
      *
      * @exception   SAXException    on any errors
-     * @see         org.xml.sax.ContentHandler#startDocument
+     * @see         org.xml.sax.ContentHandler#startDocument()
      */
     @Override
     public void startDocument() throws SAXException {
@@ -175,7 +247,7 @@ public class HTMLFormatter extends DefaultHandler2 implements AutoCloseable {
      * Receive notification of the end of the document.
      *
      * @exception   SAXException    on any errors
-     * @see         org.xml.sax.ContentHandler#endDocument
+     * @see         org.xml.sax.ContentHandler#endDocument()
      */
     @Override
     public void endDocument() throws SAXException {
@@ -202,10 +274,10 @@ public class HTMLFormatter extends DefaultHandler2 implements AutoCloseable {
      * @param   prefix  the Namespace prefix being declared
      * @param   uri     the Namespace URI mapped to the prefix
      * @exception       SAXException    always
-     * @see     org.xml.sax.ContentHandler#startPrefixMapping
+     * @see     org.xml.sax.ContentHandler#startPrefixMapping(String, String)
      */
     @Override
-    public void startPrefixMapping (String prefix, String uri) throws SAXException {
+    public void startPrefixMapping(String prefix, String uri) throws SAXException {
         throw new SAXException("Namespaces not allowed in HTML");
     }
 
@@ -214,10 +286,10 @@ public class HTMLFormatter extends DefaultHandler2 implements AutoCloseable {
      *
      * @param   prefix  the Namespace prefix
      * @exception       SAXException    always
-     * @see     org.xml.sax.ContentHandler#endPrefixMapping
+     * @see     org.xml.sax.ContentHandler#endPrefixMapping(String)
      */
     @Override
-    public void endPrefixMapping (String prefix) throws SAXException {
+    public void endPrefixMapping(String prefix) throws SAXException {
         throw new SAXException("Namespaces not allowed in HTML");
     }
 
@@ -244,21 +316,18 @@ public class HTMLFormatter extends DefaultHandler2 implements AutoCloseable {
             throw new SAXException("Misplaced element");
         try {
             write(checkData());
-            String elementName = localName.toLowerCase(); // check name is not qualified?
+            String elementName = qName.toLowerCase(); // check name is not qualified?
             if (!("meta".equals(elementName) && isMetaContentType(attributes))) {
                 if (whitespace == Whitespace.INDENT)
                     writeSpaces(elements.size() * getIndent());
                 write('<');
-                write(localName);
+                write(qName);
                 String[] boolAttr = booleanAttrs.get(elementName);
                 for (int i = 0, n = attributes.getLength(); i < n; i++) {
-                    String attr = attributes.getLocalName(i); // check name is not qualified?
+                    String attr = attributes.getQName(i); // check name is not qualified?
                     if (boolAttr != null && arrayContains(boolAttr, attr.toLowerCase())) {
-                        String attrValue = attributes.getValue(i);
-                        if (attrValue != null && attrValue.isEmpty()) {
-                            write(' ');
-                            write(attr);
-                        }
+                        write(' ');
+                        write(attr);
                     }
                     else {
                         write(' ');
@@ -285,7 +354,7 @@ public class HTMLFormatter extends DefaultHandler2 implements AutoCloseable {
                 else
                     elementPending = true;
             }
-            elements.add(localName);
+            elements.add(qName);
             if ("pre".equals(elementName))
                 preCount++;
             if ("style".equals(elementName) || "script".equals(elementName))
@@ -308,7 +377,7 @@ public class HTMLFormatter extends DefaultHandler2 implements AutoCloseable {
 
     @Override
     public void endElement(String uri, String localName, String qName) throws SAXException {
-        String elementName = localName.toLowerCase();
+        String elementName = qName.toLowerCase();
         if (elements.size() == 0 || !elementName.equals(elements.remove(elements.size() - 1)))
             throw new SAXException("Unmatched element end");
         try {
@@ -325,7 +394,7 @@ public class HTMLFormatter extends DefaultHandler2 implements AutoCloseable {
             if (literal) {
                 write(data);
                 write("</");
-                write(localName);
+                write(qName);
                 write('>');
                 if (whitespace == Whitespace.INDENT)
                     write(eol);
@@ -334,7 +403,7 @@ public class HTMLFormatter extends DefaultHandler2 implements AutoCloseable {
             else if (preCount > 0 || whitespace == Whitespace.ALL) {
                 write(HTML.escape(data));
                 write("</");
-                write(localName);
+                write(qName);
                 write('>');
                 if (preCount == 1 && whitespace == Whitespace.INDENT)
                     write(eol);
@@ -344,7 +413,7 @@ public class HTMLFormatter extends DefaultHandler2 implements AutoCloseable {
                 if (elementPending) {
                     write(HTML.escape(HTML.trim(data)));
                     write("</");
-                    write(localName);
+                    write(qName);
                     write('>');
                     elementPending = false;
                 }
@@ -355,7 +424,7 @@ public class HTMLFormatter extends DefaultHandler2 implements AutoCloseable {
                         write(HTML.escape(HTML.trim(data)));
                     }
                     write("</");
-                    write(localName);
+                    write(qName);
                     write('>');
                 }
             }
@@ -363,7 +432,7 @@ public class HTMLFormatter extends DefaultHandler2 implements AutoCloseable {
                 if (elementPending) {
                     write(HTML.escape(HTML.trim(data)));
                     write("</");
-                    write(localName);
+                    write(qName);
                     write('>');
                     write(eol);
                     elementPending = false;
@@ -376,7 +445,7 @@ public class HTMLFormatter extends DefaultHandler2 implements AutoCloseable {
                     }
                     writeSpaces(elements.size() * indent);
                     write("</");
-                    write(localName);
+                    write(qName);
                     write('>');
                     write(eol);
                 }
@@ -416,7 +485,6 @@ public class HTMLFormatter extends DefaultHandler2 implements AutoCloseable {
     }
 
     private String checkData() throws SAXException {
-        // TODO consider whether individual writes would be better than use of StringBuilder
         StringBuilder output = new StringBuilder();
         String data = this.data.toString();
         this.data.setLength(0);
@@ -527,6 +595,10 @@ public class HTMLFormatter extends DefaultHandler2 implements AutoCloseable {
             if (array[i].equals(item))
                 return true;
         return false;
+    }
+
+    private static boolean isEmpty(String s) {
+        return s == null || s.isEmpty();
     }
 
 }
