@@ -46,7 +46,7 @@ import org.xml.sax.ext.DefaultHandler2;
  *
  * @author Peter Wall
  */
-public class HTMLFormatter extends DefaultHandler2 implements AutoCloseable {
+public class HTMLFormatter extends DefaultHandler2 {
 
     /**
      * Enumeration to control whitespace handling in the formatted output:
@@ -70,7 +70,7 @@ public class HTMLFormatter extends DefaultHandler2 implements AutoCloseable {
     public static final String[] elementsWithoutText = { "html", "head", "ol", "select",
         "table", "tbody", "tfoot", "thead", "tr", "ul" };
 
-    public static final Map<String, String[]> booleanAttrs = new HashMap<>();
+    public static final Map<String, String[]> booleanAttrs = new HashMap<String, String[]>();
 
     static {
         booleanAttrs.put("area", new String[] { "nohref" });
@@ -125,7 +125,7 @@ public class HTMLFormatter extends DefaultHandler2 implements AutoCloseable {
         preCount = 0;
         literal = false;
         data = new StringBuilder();
-        elements = new ArrayList<>();
+        elements = new ArrayList<String>();
         elementPending = false;
         writer = null;
         locator = null;
@@ -151,7 +151,6 @@ public class HTMLFormatter extends DefaultHandler2 implements AutoCloseable {
      *
      * @throws IOException on any errors closing the output {@link Writer}.
      */
-    @Override
     public void close() throws IOException {
         if (writer != null) {
             writer.close();

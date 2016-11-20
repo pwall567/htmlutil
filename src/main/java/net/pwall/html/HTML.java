@@ -254,7 +254,7 @@ public class HTML {
     public static final String[] elementsWithoutText = { "head", "html", "ol", "select",
             "table", "tbody", "tfoot", "thead", "tr", "ul" };
 
-    public static final Map<String, String[]> booleanAttrs = new HashMap<>();
+    public static final Map<String, String[]> booleanAttrs = new HashMap<String, String[]>();
 
     static {
         booleanAttrs.put("area", new String[] { "nohref" });
@@ -723,10 +723,16 @@ public class HTML {
     public static void output(OutputStream out, Node node, Properties properties)
             throws IOException {
         String encoding = getProperty(properties, "encoding");
-        try (OutputStreamWriter osw = encoding != null ?
-                new OutputStreamWriter(out, encoding) : new OutputStreamWriter(out)) {
+        OutputStreamWriter osw = null;
+        try {
+            osw = encoding != null ? new OutputStreamWriter(out, encoding) :
+                    new OutputStreamWriter(out);
             output(osw, node, properties);
             osw.flush();
+        }
+        finally {
+            if (osw != null)
+                osw.close();
         }
     }
 
