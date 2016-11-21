@@ -6,7 +6,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>net.pwall.html</groupId>
   <artifactId>htmlutil</artifactId>
-  <version>1.0.2</version>
+  <version>1.0.3</version>
   <name>HTML Utilities</name>
   <description>HTML Utilities</description>
   <packaging>jar</packaging>
@@ -48,7 +48,7 @@
     <dependency>
       <groupId>net.pwall.util</groupId>
       <artifactId>javautil</artifactId>
-      <version>1.0.4</version>
+      <version>1.0.5</version>
     </dependency>
   </dependencies>
 
