@@ -13,8 +13,8 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
+import java.util.function.IntPredicate;
 
-import net.pwall.util.AbstractCharMapper;
 import net.pwall.util.CharMapper;
 import net.pwall.util.CharMapperEntry;
 import net.pwall.util.CharUnmapper;
@@ -275,40 +275,30 @@ public class HTML {
         // any others?
     }
 
-    public static final Strings.SpaceTest spaceTest = new Strings.SpaceTest() {
-        @Override public boolean isSpace(int ch) {
-            return isWhiteSpace(ch);
-        }
+    public static final IntPredicate spaceTest = HTML::isWhiteSpace;
+
+    public static final CharMapper dataCharMapper = (codePoint) -> {
+        if (codePoint == '<')
+            return "&lt;";
+        if (codePoint == '>')
+            return "&gt;";
+        if (codePoint == '&')
+            return "&amp;";
+        String result = CharMapper.arrayMapping(baseEntities, codePoint, 0xA0);
+        if (result != null)
+            return result;
+        result = CharMapper.lookupMapping(mappedEntities, codePoint);
+        if (result != null)
+            return result;
+        if (codePoint < ' ' && !isWhiteSpace(codePoint) || codePoint >= 0x7F)
+            return CharMapper.decimalMapping(codePoint, "&#", ";");
+        return null;
     };
 
-    public static final CharMapper charMapper = new CharMapper() {
-        @Override
-        public String map(int codePoint) {
-            if (codePoint == '"')
-                return "&quot;";
-            return dataCharMapper.map(codePoint);
-        }
-    };
-
-    public static final CharMapper dataCharMapper = new AbstractCharMapper() {
-        @Override
-        public String map(int codePoint) {
-            if (codePoint == '<')
-                return "&lt;";
-            if (codePoint == '>')
-                return "&gt;";
-            if (codePoint == '&')
-                return "&amp;";
-            String result = arrayMapping(baseEntities, codePoint, 0xA0);
-            if (result != null)
-                return result;
-            result = lookupMapping(mappedEntities, codePoint);
-            if (result != null)
-                return result;
-            if (codePoint < ' ' && !isWhiteSpace(codePoint) || codePoint >= 0x7F)
-                return decimalMapping(codePoint, "&#", ";");
-            return null;
-        }
+    public static final CharMapper charMapper = (codePoint) -> {
+        if (codePoint == '"')
+            return "&quot;";
+        return dataCharMapper.map(codePoint);
     };
 
     private static final CharUnmapper unmapper = new CharUnmapper() {
