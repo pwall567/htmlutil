@@ -1,7 +1,7 @@
 /*
  * @(#) HTMLFormatter.java
  *
- * HTML Formatter Class
+ * htmlutil  HTML Java Utilities
  * Copyright (c) 2012, 2013, 2014, 2015 Peter Wall
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
